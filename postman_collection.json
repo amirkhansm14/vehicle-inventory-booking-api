@@ -1,0 +1,121 @@
+{
+  "info": {
+    "name": "Vehicle Inventory & Booking API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "vehicle_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Vehicles",
+      "item": [
+        {
+          "name": "List vehicles",
+          "request": { "method": "GET", "url": "{{base_url}}/api/vehicles/" }
+        },
+        {
+          "name": "Filter vehicles by brand/fuel/availability",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/vehicles/?brand=Toyota&fuel_type=petrol&is_available=true"
+          }
+        },
+        {
+          "name": "Create vehicle",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/vehicles/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Corolla\",\n  \"brand\": \"Toyota\",\n  \"year\": 2023,\n  \"price_per_day\": \"50.00\",\n  \"fuel_type\": \"petrol\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Retrieve vehicle",
+          "request": { "method": "GET", "url": "{{base_url}}/api/vehicles/{{vehicle_id}}/" }
+        },
+        {
+          "name": "Update vehicle",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/vehicles/{{vehicle_id}}/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Corolla\",\n  \"brand\": \"Toyota\",\n  \"year\": 2023,\n  \"price_per_day\": \"55.00\",\n  \"fuel_type\": \"petrol\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete vehicle",
+          "request": { "method": "DELETE", "url": "{{base_url}}/api/vehicles/{{vehicle_id}}/" }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "List bookings",
+          "request": { "method": "GET", "url": "{{base_url}}/api/bookings/" }
+        },
+        {
+          "name": "Create booking (valid)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/bookings/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle\": {{vehicle_id}},\n  \"customer_name\": \"Jane Doe\",\n  \"customer_phone\": \"9876543210\",\n  \"start_date\": \"2026-09-10\",\n  \"end_date\": \"2026-09-13\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create booking (overlapping dates -> 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/bookings/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle\": {{vehicle_id}},\n  \"customer_name\": \"Bob\",\n  \"customer_phone\": \"9876543211\",\n  \"start_date\": \"2026-09-12\",\n  \"end_date\": \"2026-09-15\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create booking (invalid phone -> 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/bookings/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle\": {{vehicle_id}},\n  \"customer_name\": \"Bob\",\n  \"customer_phone\": \"123\",\n  \"start_date\": \"2026-09-20\",\n  \"end_date\": \"2026-09-22\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create booking (past start date -> 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/bookings/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle\": {{vehicle_id}},\n  \"customer_name\": \"Bob\",\n  \"customer_phone\": \"9876543212\",\n  \"start_date\": \"2020-01-01\",\n  \"end_date\": \"2020-01-05\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Retrieve booking",
+          "request": { "method": "GET", "url": "{{base_url}}/api/bookings/1/" }
+        }
+      ]
+    }
+  ]
+}
