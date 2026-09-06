@@ -43,6 +43,17 @@ show this once" box at creation time (a UUID-looking string) — not the "Token 
 column shown afterward in the tokens table, which looks similar but is a
 different, unusable value.
 
+## Gotcha: `railway up` needs an explicit `--project` in CI
+
+`railway init` / `railway link` write the project link to local machine config
+(outside the repo), not to a file that gets checked out. A fresh GitHub Actions
+runner has no such link, so `railway up` fails with "No linked project found."
+The workflow now passes `--project "${{ secrets.RAILWAY_PROJECT_ID }}"` and
+`--environment production` explicitly instead of relying on a link file. The
+project ID is stored as the `RAILWAY_PROJECT_ID` GitHub secret (not sensitive on
+its own, but kept alongside the other Railway secrets for consistency):
+`648bdcf2-eeae-4611-8b72-5c52c9f8c21a`.
+
 ## What's left
 
 1. **Verify the GitHub Actions `deploy` job succeeds**, not just the manual
