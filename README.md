@@ -248,9 +248,9 @@ runs migrations + `collectstatic`, and serves the API at `http://localhost:8000/
 It runs the *production* settings module (with `SECURE_SSL_REDIRECT=False` since
 there's no TLS on localhost), so it's a faithful test of the deployment path.
 
-## Deployment (Railway, containerized)
+## Deployment (Railway, containerized) — live
 
-The project is set up to deploy as a container on Railway:
+The project is deployed as a container on Railway, with CI/CD fully wired up:
 
 - `Dockerfile` / `entrypoint.sh` — builds the app image and runs
   `migrate` → `collectstatic` → `gunicorn` on container start.
@@ -261,22 +261,39 @@ The project is set up to deploy as a container on Railway:
     spins up a Postgres service, runs `manage.py check`, migrations, then the
     `pytest` suite.
   - **`deploy`** — runs only on push to `main`, only after `test` passes: deploys
-    the current commit to Railway via the Railway CLI.
+    the current commit to Railway via the Railway CLI (verified green end-to-end).
 
 This is the same setup as any other platform (`Procfile` is also kept for
 Heroku-style buildpack platforms as a fallback), but Railway is the primary,
 documented target.
 
-**Creating the Railway project, Postgres instance, API token, and GitHub Actions
-secrets (`RAILWAY_TOKEN`, `RAILWAY_SERVICE_ID`) all require an actual Railway/GitHub
-account and cannot be done from inside this repository.** The full manual
-checklist — what to click, which env vars to set on Railway, which secrets to add
-on GitHub — is in [`TODO.md`](TODO.md). Once deployed:
-
-- API: `https://<your-railway-domain>/api/...`
-- Swagger UI: `https://<your-railway-domain>/api/docs/`
+- **API**: https://vehicle-inventory-booking-api-production.up.railway.app/api/
+- **Swagger UI**: https://vehicle-inventory-booking-api-production.up.railway.app/api/docs/
 
 **Live URL:** https://vehicle-inventory-booking-api-production.up.railway.app/
+
+### Reproducing this on a different Railway/GitHub account
+
+The steps below already happened for this repo (project created, Postgres
+attached, env vars set, GitHub secrets added, first deploy confirmed) — they're
+here only for forking to a new account or environment:
+
+1. Create a Railway project, attach a Postgres plugin, and add a service pointed
+   at the GitHub repo's `main` branch (build from `Dockerfile`, per `railway.json`).
+2. Set on the app service: `DJANGO_ENV=production`, a freshly generated
+   `SECRET_KEY`, `ALLOWED_HOSTS` (the Railway domain), `DATABASE_URL` (reference
+   the Postgres plugin's variable, don't hardcode it), `CORS_ALLOWED_ORIGINS`.
+3. Generate a Railway **account API token** (Account Settings → Tokens) and grab
+   the project ID and the app service ID.
+4. Add three GitHub Actions secrets: `RAILWAY_TOKEN` (the account token),
+   `RAILWAY_PROJECT_ID`, `RAILWAY_SERVICE_ID`.
+5. Push to `main` — the `deploy` job in `ci-cd.yml` picks it up automatically.
+
+Two non-obvious gotchas from doing this the first time are documented in
+[`TODO.md`](TODO.md): an **account token** (not a project token) must be passed
+to the CLI as `RAILWAY_API_TOKEN`, not `RAILWAY_TOKEN`; and `railway up` needs
+`--project`/`--environment` passed explicitly in CI since the local project link
+`railway init` creates never reaches the GitHub Actions runner.
 
 ## Screen recording
 

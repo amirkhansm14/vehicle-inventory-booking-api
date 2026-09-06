@@ -1,26 +1,30 @@
 # TODO — Containerized Deployment & CI/CD
 
-Everything code-side (Dockerfile, `docker-compose.yml`, `railway.json`, GitHub
-Actions pipeline) is already in this repo, and the project is **already deployed**:
-`https://vehicle-inventory-booking-api-production.up.railway.app/`. This file
-tracks what was done, what's left, and one gotcha worth remembering if this ever
-needs to be redone.
+Status: **done and verified**. The app is deployed on Railway, CI/CD is wired up
+end-to-end, and a full green run (`test` → `deploy`) has actually happened —
+this isn't just config that's expected to work, it's been exercised.
 
-## Status: done
+Live URL: https://vehicle-inventory-booking-api-production.up.railway.app/
 
-- Railway project `vehicle-inventory-booking-api` created (workspace
-  `amirkhansm14's Projects`), with a Postgres service and an app service linked
-  to `amirkhansm14/vehicle-inventory-booking-api` on `main`, building from the
-  `Dockerfile`.
-- App service env vars set: `DJANGO_ENV=production`, `SECRET_KEY` (generated,
-  distinct from any value in this repo), `ALLOWED_HOSTS` (the generated Railway
-  domain), `DATABASE_URL` (set as a live reference `${{Postgres.DATABASE_URL}}`,
-  not a hardcoded copy), `CORS_ALLOWED_ORIGINS` (empty — no frontend yet).
-- Public domain generated:
-  `vehicle-inventory-booking-api-production.up.railway.app`.
-- GitHub Actions secrets `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` set on the repo.
-- First deploy done manually via `railway up` to prove the Dockerfile path works;
-  `/api/vehicles/` and `/api/docs/` both return 200 on the live URL.
+This file exists so the two non-obvious gotchas hit while setting this up aren't
+rediscovered the hard way if this ever needs to be redone (new account, new repo,
+a future agent picking this up cold).
+
+## What's set up
+
+- Railway project `vehicle-inventory-booking-api` (workspace
+  `amirkhansm14's Projects`): a Postgres service, and an app service linked to
+  `amirkhansm14/vehicle-inventory-booking-api` on `main`, building from the
+  `Dockerfile` (per `railway.json`).
+- App service env vars: `DJANGO_ENV=production`, `SECRET_KEY` (generated,
+  distinct from any value in this repo), `ALLOWED_HOSTS` (the Railway domain),
+  `DATABASE_URL` (a live reference `${{Postgres.DATABASE_URL}}`, not a hardcoded
+  copy), `CORS_ALLOWED_ORIGINS` (empty — no frontend yet).
+- GitHub Actions secrets on the repo: `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`,
+  `RAILWAY_SERVICE_ID`.
+- `.github/workflows/ci-cd.yml`: `test` runs on every PR into `main` and every
+  push to `main`; `deploy` runs only on push to `main`, only after `test` passes.
+  Confirmed both jobs green on a real push (PR #3 merge → run `34007935887`).
 
 ## Gotcha: Railway token type
 
@@ -33,10 +37,10 @@ Railway has two kinds of tokens and they are **not interchangeable**:
   passed as `RAILWAY_API_TOKEN`, not `RAILWAY_TOKEN` — the CLI rejects it under
   the wrong variable name with "Invalid RAILWAY_TOKEN".
 
-This repo's `.github/workflows/ci-cd.yml` passes the `RAILWAY_TOKEN` **secret**
-into the `RAILWAY_API_TOKEN` **environment variable**, because the token that
-exists is an account token. If a project-scoped token is generated instead in the
-future, swap that env var back to `RAILWAY_TOKEN` in the workflow.
+`ci-cd.yml` passes the `RAILWAY_TOKEN` **secret** into the `RAILWAY_API_TOKEN`
+**environment variable**, because the token that exists is an account token. If a
+project-scoped token is generated instead in the future, swap that env var back
+to `RAILWAY_TOKEN`.
 
 Also note: the token's *value* is what the dashboard shows in the "we'll only
 show this once" box at creation time (a UUID-looking string) — not the "Token ID"
@@ -48,25 +52,19 @@ different, unusable value.
 `railway init` / `railway link` write the project link to local machine config
 (outside the repo), not to a file that gets checked out. A fresh GitHub Actions
 runner has no such link, so `railway up` fails with "No linked project found."
-The workflow now passes `--project "${{ secrets.RAILWAY_PROJECT_ID }}"` and
-`--environment production` explicitly instead of relying on a link file. The
-project ID is stored as the `RAILWAY_PROJECT_ID` GitHub secret (not sensitive on
-its own, but kept alongside the other Railway secrets for consistency):
-`648bdcf2-eeae-4611-8b72-5c52c9f8c21a`.
+`ci-cd.yml` passes `--project "${{ secrets.RAILWAY_PROJECT_ID }}"` and
+`--environment production` explicitly instead of relying on a link file.
 
-## What's left
+## What's genuinely left
 
-1. **Verify the GitHub Actions `deploy` job succeeds**, not just the manual
-   `railway up` done from this session. Push a small change to `main` (or re-run
-   the existing workflow) and check the `Deploy to Railway` job passes end to end.
-2. **(Recommended) Branch protection on `main`** — require the `test` job to pass
-   before a PR can merge, so `deploy` never ships untested code.
-3. **Update `README.md`**:
-   - Live URL is already known:
-     `https://vehicle-inventory-booking-api-production.up.railway.app/` — put
-     this in the "Live URL" placeholder in the Deployment section.
-   - Record the screen-recording deliverable (2-5 min) against this live URL or
-     localhost, then update the "Recording" placeholder.
+1. **(Recommended) Branch protection on `main`** — require the `test` job to pass
+   before a PR can merge, so `deploy` can never ship untested code. Not done yet;
+   nothing has depended on it so far because every merge so far went through a
+   PR with a green `test` run first, but that's a habit, not an enforced rule.
+2. **Screen recording deliverable** (2–5 min, per the original brief) — show the
+   project running, API calls (Swagger UI or Postman), and a booking being
+   created plus validated. This has to be recorded by a person; link it in
+   `README.md`'s "Screen recording" section once done.
 
 ## Local verification before touching Railway (still valid for future changes)
 
@@ -79,10 +77,10 @@ curl http://localhost:8000/api/vehicles/
 This proves the container + Postgres path works before redeploying to Railway, so
 any failure there is a Railway config issue, not an app issue.
 
-## Deliberately out of scope for this pass
+## Deliberately out of scope
 
 - No staging environment / preview deployments per PR — only prod-on-`main` is
   wired up, matching what the original brief actually asked for (host the API
   somewhere). Add PR preview environments only if a future request calls for it.
-- No authentication is added by this change — see the "Known limitations" section
-  in `README.md`, which predates this containerization work and still applies.
+- No authentication is added by this deployment work — see "Known limitations" in
+  `README.md`, which predates it and still applies.
