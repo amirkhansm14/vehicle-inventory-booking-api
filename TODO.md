@@ -1,65 +1,63 @@
 # TODO — Containerized Deployment & CI/CD
 
 Everything code-side (Dockerfile, `docker-compose.yml`, `railway.json`, GitHub
-Actions pipeline) is already in this repo. What's listed here is the account-side
-setup that has to be done by a human with Railway/GitHub access — an agent working
-on this repo later doesn't have those credentials and shouldn't invent them. This
-file exists so that work isn't lost between sessions.
+Actions pipeline) is already in this repo, and the project is **already deployed**:
+`https://vehicle-inventory-booking-api-production.up.railway.app/`. This file
+tracks what was done, what's left, and one gotcha worth remembering if this ever
+needs to be redone.
 
-## What's already built
+## Status: done
 
-- `Dockerfile` + `entrypoint.sh` — runs `migrate`, `collectstatic`, then `gunicorn`,
-  as a non-root user, reading `$PORT` (Railway sets this at runtime).
-- `.dockerignore`
-- `docker-compose.yml` + `.env.docker.example` — local container testing against a
-  real Postgres instance (mirrors production settings, not SQLite).
-- `railway.json` — tells Railway to build from the `Dockerfile` and sets a health
-  check against `/api/vehicles/`.
-- `.github/workflows/ci-cd.yml`:
-  - `test` job — runs on every PR into `main` **and** every push to `main`: spins
-    up a real Postgres service container, runs `manage.py check`, `migrate`, then
-    `pytest`.
-  - `deploy` job — runs only on push to `main`, only after `test` passes; deploys
-    to Railway via the Railway CLI (`railway up`).
+- Railway project `vehicle-inventory-booking-api` created (workspace
+  `amirkhansm14's Projects`), with a Postgres service and an app service linked
+  to `amirkhansm14/vehicle-inventory-booking-api` on `main`, building from the
+  `Dockerfile`.
+- App service env vars set: `DJANGO_ENV=production`, `SECRET_KEY` (generated,
+  distinct from any value in this repo), `ALLOWED_HOSTS` (the generated Railway
+  domain), `DATABASE_URL` (set as a live reference `${{Postgres.DATABASE_URL}}`,
+  not a hardcoded copy), `CORS_ALLOWED_ORIGINS` (empty — no frontend yet).
+- Public domain generated:
+  `vehicle-inventory-booking-api-production.up.railway.app`.
+- GitHub Actions secrets `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` set on the repo.
+- First deploy done manually via `railway up` to prove the Dockerfile path works;
+  `/api/vehicles/` and `/api/docs/` both return 200 on the live URL.
 
-## What still needs to be done manually (cannot be automated by an agent)
+## Gotcha: Railway token type
 
-1. **Create the Railway project**
-   - Sign in at railway.app, create a new project, add a Postgres plugin/service.
-   - Add a second service for this app, pointed at this GitHub repo, with
-     "Deploy from Dockerfile" (railway.json already declares this).
+Railway has two kinds of tokens and they are **not interchangeable**:
 
-2. **Set production environment variables in the Railway service dashboard**
-   - `DJANGO_ENV=production`
-   - `SECRET_KEY` — a real generated secret, different from any value in this repo
-   - `ALLOWED_HOSTS` — the Railway-provided domain (and any custom domain)
-   - `DATABASE_URL` — Railway injects this automatically when you attach its
-     Postgres plugin to the service; verify it's present, don't hardcode it
-   - `CORS_ALLOWED_ORIGINS` — the frontend origin(s) allowed to call this API
-   - Leave `SECURE_SSL_REDIRECT` unset (defaults to `True`) since Railway
-     terminates TLS in front of the container
+- A **project token** (created from within a project's own Settings → Tokens) is
+  scoped to one project/environment and is read via the `RAILWAY_TOKEN` env var.
+- An **account/personal API token** (created from Account Settings → Tokens,
+  which is what got created here) is scoped to your whole account and must be
+  passed as `RAILWAY_API_TOKEN`, not `RAILWAY_TOKEN` — the CLI rejects it under
+  the wrong variable name with "Invalid RAILWAY_TOKEN".
 
-3. **Create a Railway API token and service ID for CI/CD**
-   - Railway dashboard → Account Settings → Tokens → create a token
-   - Get the service ID from the service's settings page
-   - In the GitHub repo: Settings → Secrets and variables → Actions, add:
-     - `RAILWAY_TOKEN`
-     - `RAILWAY_SERVICE_ID`
-   - Without these two secrets the `deploy` job in `ci-cd.yml` will fail — that's
-     expected until they're added.
+This repo's `.github/workflows/ci-cd.yml` passes the `RAILWAY_TOKEN` **secret**
+into the `RAILWAY_API_TOKEN` **environment variable**, because the token that
+exists is an account token. If a project-scoped token is generated instead in the
+future, swap that env var back to `RAILWAY_TOKEN` in the workflow.
 
-4. **(Recommended) Branch protection on `main`**
-   - Require the `test` job from `ci-cd.yml` to pass before a PR can be merged, so
-     the CD job never deploys code that hasn't been tested.
+Also note: the token's *value* is what the dashboard shows in the "we'll only
+show this once" box at creation time (a UUID-looking string) — not the "Token ID"
+column shown afterward in the tokens table, which looks similar but is a
+different, unusable value.
 
-5. **After the first successful deploy**
-   - Confirm `https://<railway-domain>/api/docs/` loads.
-   - Update the "Live URL" placeholder in `README.md`'s Deployment section.
-   - Record the screen-recording deliverable against the deployed URL (or
-     localhost — either satisfies the brief), then update the "Recording"
-     placeholder in `README.md`.
+## What's left
 
-## Local verification before touching Railway
+1. **Verify the GitHub Actions `deploy` job succeeds**, not just the manual
+   `railway up` done from this session. Push a small change to `main` (or re-run
+   the existing workflow) and check the `Deploy to Railway` job passes end to end.
+2. **(Recommended) Branch protection on `main`** — require the `test` job to pass
+   before a PR can merge, so `deploy` never ships untested code.
+3. **Update `README.md`**:
+   - Live URL is already known:
+     `https://vehicle-inventory-booking-api-production.up.railway.app/` — put
+     this in the "Live URL" placeholder in the Deployment section.
+   - Record the screen-recording deliverable (2-5 min) against this live URL or
+     localhost, then update the "Recording" placeholder.
+
+## Local verification before touching Railway (still valid for future changes)
 
 ```bash
 cp .env.docker.example .env.docker   # edit SECRET_KEY if you want
@@ -67,8 +65,8 @@ docker compose up --build
 curl http://localhost:8000/api/vehicles/
 ```
 
-This proves the container + Postgres path works before wiring it to a real cloud
-account, so any failure at that point is a Railway config issue, not an app issue.
+This proves the container + Postgres path works before redeploying to Railway, so
+any failure there is a Railway config issue, not an app issue.
 
 ## Deliberately out of scope for this pass
 

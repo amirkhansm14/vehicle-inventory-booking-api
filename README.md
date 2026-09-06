@@ -276,7 +276,7 @@ on GitHub — is in [`TODO.md`](TODO.md). Once deployed:
 - API: `https://<your-railway-domain>/api/...`
 - Swagger UI: `https://<your-railway-domain>/api/docs/`
 
-**Live URL:** _TODO — add after deploying (see `TODO.md`)_
+**Live URL:** https://vehicle-inventory-booking-api-production.up.railway.app/
 
 ## Screen recording
 
